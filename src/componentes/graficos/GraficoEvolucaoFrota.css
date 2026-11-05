@@ -1,0 +1,41 @@
+
+.grafico-container {
+  margin: 0 40px 40px;
+  padding: 24px;
+  background: #192332;
+  border: 1px solid #293548;
+  border-radius: 12px;
+}
+
+.grafico-cabecalho {
+  margin-bottom: 24px;
+}
+
+.grafico-cabecalho h3 {
+  color: #f1f5f9;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+.grafico-cabecalho p {
+  color: #94a3b8;
+  font-size: 13px;
+  margin: 0;
+}
+
+.grafico-area {
+  width: 100%;
+  height: 320px;
+}
+
+@media (max-width: 600px) {
+  .grafico-container {
+    margin: 0 20px 30px;
+    padding: 16px;
+  }
+
+  .grafico-area {
+    height: 260px;
+  }
+}
