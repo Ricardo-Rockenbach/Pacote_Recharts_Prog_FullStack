@@ -2,13 +2,12 @@
   display: flex;
   width: 100%;
   min-height: 100vh;
-  background: #151e2b;
+  background: var(--fundo);
 }
 
 .app-main {
   flex: 1;
   min-width: 0;
-  width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -17,5 +16,12 @@
   flex: 1;
   min-width: 0;
   width: 100%;
-  padding: 30px 34px;
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 28px clamp(20px, 3vw, 46px) 54px;
+}
+
+@media (max-width: 760px) {
+  .app-layout { flex-direction: column; }
+  .app-content { padding: 22px 18px 38px; }
 }

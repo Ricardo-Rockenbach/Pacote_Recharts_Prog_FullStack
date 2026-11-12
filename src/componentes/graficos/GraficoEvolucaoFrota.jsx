@@ -1,85 +1,73 @@
-
+import "./GraficoEvolucaoFrota.css";
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
 } from "recharts";
 
-import "./GraficoEvolucaoFrota.css";
-
 function formatarNumero(valor) {
-  return new Intl.NumberFormat("pt-BR").format(valor);
+  return new Intl.NumberFormat("pt-BR").format(valor || 0);
 }
 
-function GraficoEvolucaoFrota({ dados }) {
-  const dadosGrafico = dados;
+function formatarCompacto(valor) {
+  return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(valor / 1000000)} mi`;
+}
 
+function GraficoEvolucaoFrota({ dados, descricao }) {
   return (
-    <div className="grafico-container">
+    <div className="grafico-container grafico-evolucao">
       <div className="grafico-cabecalho">
         <div>
+          <span className="grafico-etiqueta">SÉRIE HISTÓRICA</span>
           <h3>Evolução da frota circulante</h3>
-          <p>Último mês disponível de cada ano · 2023: fevereiro</p>
+          <p>{descricao}</p>
         </div>
+        <span className="grafico-tipo">Área</span>
       </div>
-
       <div className="grafico-area">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={dadosGrafico}
-            margin={{ top: 10, right: 20, left: 10, bottom: 0 }}
-          >
-            <CartesianGrid
-              stroke="#293548"
-              strokeDasharray="3 3"
-              vertical={false}
-            />
-
+          <AreaChart data={dados} margin={{ top: 12, right: 18, left: 4, bottom: 2 }}>
+            <defs>
+              <linearGradient id="corFrotaArea" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#41c7b2" stopOpacity={0.32} />
+                <stop offset="95%" stopColor="#41c7b2" stopOpacity={0.015} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke="#2d4148" strokeDasharray="3 5" vertical={false} />
             <XAxis
-              dataKey="ano"
-              stroke="#64748b"
-              tick={{ fill: "#94a3b8", fontSize: 12 }}
-              axisLine={false}
+              dataKey="periodo"
+              tick={{ fill: "#9eabb3", fontSize: 11 }}
+              axisLine={{ stroke: "#49616a" }}
               tickLine={false}
+              padding={{ left: 8, right: 8 }}
             />
-
             <YAxis
-              stroke="#64748b"
-              tick={{ fill: "#94a3b8", fontSize: 12 }}
+              tick={{ fill: "#9eabb3", fontSize: 10 }}
               axisLine={false}
               tickLine={false}
-              tickFormatter={(valor) =>
-                `${(valor / 1000000).toFixed(0)} mi`
-              }
+              tickFormatter={formatarCompacto}
+              width={48}
             />
-
             <Tooltip
-              contentStyle={{
-                backgroundColor: "#192332",
-                border: "1px solid #334155",
-                borderRadius: "8px",
-                color: "#f8fafc",
-              }}
-              labelStyle={{ color: "#94a3b8" }}
-              formatter={(valor) => [
-                formatarNumero(valor),
-                "Frota circulante",
-              ]}
+              contentStyle={{ backgroundColor: "#17282f", border: "1px solid #38505a", borderRadius: 8, color: "#f2f0e9" }}
+              labelStyle={{ color: "#f2f0e9", fontWeight: 700 }}
+              formatter={(valor) => [formatarNumero(valor), "Frota circulante"]}
             />
-
-            <Line
+            <Area
               type="monotone"
               dataKey="frotaCirculante"
-              stroke="#3b82f6"
-              strokeWidth={3}
-              dot={{ fill: "#3b82f6", strokeWidth: 0, r: 4 }}
-              activeDot={{ r: 6 }}
+              name="Frota circulante"
+              stroke="#41c7b2"
+              strokeWidth={2.7}
+              fill="url(#corFrotaArea)"
+              activeDot={{ r: 5, fill: "#f2f0e9", stroke: "#41c7b2", strokeWidth: 2 }}
+              dot={{ r: 3, fill: "#41c7b2", strokeWidth: 0 }}
             />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>

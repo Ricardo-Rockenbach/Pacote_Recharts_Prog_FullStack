@@ -1,41 +1,34 @@
-
 .grafico-container {
-  margin: 0 40px 40px;
-  padding: 24px;
-  background: #192332;
-  border: 1px solid #293548;
-  border-radius: 12px;
+  min-width: 0;
+  padding: 18px 18px 15px;
+  border: 1px solid var(--borda);
+  border-radius: 7px;
+  background: var(--painel);
 }
-
-.grafico-cabecalho {
-  margin-bottom: 24px;
-}
-
-.grafico-cabecalho h3 {
-  color: #f1f5f9;
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0 0 6px;
-}
-
-.grafico-cabecalho p {
-  color: #94a3b8;
-  font-size: 13px;
-  margin: 0;
-}
-
-.grafico-area {
-  width: 100%;
-  height: 320px;
-}
+.grafico-cabecalho { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 15px; }
+.grafico-cabecalho h3 { margin: 4px 0 4px; color: #e8eee8; font-size: 13px; font-weight: 700; letter-spacing: -.1px; }
+.grafico-cabecalho p { margin: 0; color: #84989d; font-size: 10px; line-height: 1.5; }
+.grafico-etiqueta { color: var(--ciano); font-size: 8px; font-weight: 800; letter-spacing: 1.15px; }
+.grafico-tipo { flex: 0 0 auto; padding: 4px 7px; border: 1px solid #345058; border-radius: 4px; color: #91a8aa; font-size: 8px; font-weight: 700; }
+.grafico-area { width: 100%; height: 300px; }
+.grafico-tooltip { display: flex; min-width: 155px; flex-direction: column; gap: 5px; padding: 10px 12px; border: 1px solid #405760; border-radius: 6px; background: #17282f; color: #dce6e0; box-shadow: 0 8px 22px #07111566; font-size: 10px; }
+.grafico-tooltip strong { color: #f1f2eb; font-size: 11px; }
+.grafico-tooltip span { color: #a9b9b8; }
+.grafico-tooltip em { color: var(--ciano); font-style: normal; font-weight: 700; }
+.grafico-legenda-texto { color: #aebcbd; font-size: 10px; }
+.grafico-rodape { margin-top: 3px; color: #71858d; font-size: 9px; line-height: 1.4; }
+.grafico-vazio { display: grid; width: 100%; height: 100%; place-items: center; color: #879a9e; font-size: 11px; }
+.grafico-evolucao .grafico-area, .grafico-regional .grafico-area { height: 315px; }
+.grafico-participacao .grafico-area, .grafico-radar .grafico-area { height: 315px; }
+.grafico-correlacao .grafico-area { height: 330px; }
+.grafico-top-estados .grafico-area, .grafico-top-municipios .grafico-area { height: 385px; }
+.grafico-treemap .grafico-area { height: 315px; }
 
 @media (max-width: 600px) {
-  .grafico-container {
-    margin: 0 20px 30px;
-    padding: 16px;
-  }
-
-  .grafico-area {
-    height: 260px;
-  }
+  .grafico-container { padding: 15px 12px 12px; }
+  .grafico-area, .grafico-evolucao .grafico-area, .grafico-regional .grafico-area,
+  .grafico-participacao .grafico-area, .grafico-radar .grafico-area,
+  .grafico-correlacao .grafico-area, .grafico-top-estados .grafico-area,
+  .grafico-top-municipios .grafico-area, .grafico-treemap .grafico-area { height: 275px; }
+  .grafico-cabecalho h3 { font-size: 12px; }
 }

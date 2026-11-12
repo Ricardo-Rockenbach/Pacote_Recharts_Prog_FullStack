@@ -1,4 +1,3 @@
-
 import {
   ResponsiveContainer,
   BarChart,
@@ -7,79 +6,57 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  LabelList,
 } from "recharts";
 
 import "./GraficoTopMunicipios.css";
 
-function formatarNumero(valor) {
-  return new Intl.NumberFormat("pt-BR").format(valor || 0);
-}
+const formatador = new Intl.NumberFormat("pt-BR");
+const compacto = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 });
 
 function GraficoTopMunicipios({ dados }) {
   return (
     <div className="grafico-container grafico-top-municipios">
       <div className="grafico-cabecalho">
         <div>
-          <h3>Top 10 municípios</h3>
-          <p>Municípios com maior frota circulante</p>
+          <span className="grafico-etiqueta">RANKING MUNICIPAL</span>
+          <h3>Municípios com maior frota</h3>
+          <p>Os dez maiores volumes dentro do recorte selecionado</p>
         </div>
+        <span className="grafico-tipo">Barras horizontais</span>
       </div>
-
       <div className="grafico-area">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={dados}
-            layout="vertical"
-            margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
-          >
-            <CartesianGrid
-              stroke="#293548"
-              strokeDasharray="3 3"
-              horizontal={false}
-            />
-
-            <XAxis
-              type="number"
-              stroke="#64748b"
-              tick={{ fill: "#94a3b8", fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(valor) =>
-                `${(valor / 1000000).toFixed(1)} mi`
-              }
-            />
-
-            <YAxis
-              type="category"
-              dataKey="municipio"
-              width={110}
-              stroke="#64748b"
-              tick={{ fill: "#94a3b8", fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-            />
-
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#192332",
-                border: "1px solid #334155",
-                borderRadius: "8px",
-                color: "#f8fafc",
-              }}
-              formatter={(valor) => [
-                formatarNumero(valor),
-                "Frota circulante",
-              ]}
-            />
-
-            <Bar
-              dataKey="frotaCirculante"
-              fill="#8b5cf6"
-              radius={[0, 5, 5, 0]}
-              maxBarSize={24}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+        {dados.length ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={dados} layout="vertical" margin={{ top: 6, right: 62, left: 8, bottom: 4 }}>
+              <CartesianGrid stroke="#2d4148" strokeDasharray="3 5" horizontal={false} />
+              <XAxis
+                type="number"
+                tick={{ fill: "#9eabb3", fontSize: 10 }}
+                axisLine={{ stroke: "#49616a" }}
+                tickLine={false}
+                tickFormatter={(valor) => compacto.format(valor)}
+              />
+              <YAxis
+                type="category"
+                dataKey="municipio"
+                width={132}
+                tick={{ fill: "#b4c0c2", fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                interval={0}
+              />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#17282f", border: "1px solid #38505a", borderRadius: 8, color: "#f2f0e9" }}
+                labelStyle={{ color: "#f2f0e9", fontWeight: 700 }}
+                formatter={(valor, nome) => [formatador.format(valor), nome === "frotaCirculante" ? "Frota circulante" : nome]}
+              />
+              <Bar dataKey="frotaCirculante" name="Frota circulante" fill="#8499e8" radius={[0, 5, 5, 0]} maxBarSize={25}>
+                <LabelList dataKey="frotaCirculante" position="right" formatter={(valor) => compacto.format(valor)} fill="#c5d0d0" fontSize={10} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        ) : <div className="grafico-vazio">Nenhum município corresponde aos filtros.</div>}
       </div>
     </div>
   );

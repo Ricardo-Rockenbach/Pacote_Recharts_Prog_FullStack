@@ -1,80 +1,19 @@
-
-.grafico-treemap .grafico-area {
-  height: 360px;
-}
-
-.grafico-treemap .grafico-cabecalho {
-  margin-bottom: 12px;
-}
-
-/* Rótulos internos dos blocos */
-
+.grafico-treemap .grafico-cabecalho { margin-bottom: 12px; }
 .treemap-label {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 7px;
-
   width: 100%;
   height: 100%;
-  overflow: hidden;
-
-  font-family: Inter, "Segoe UI", sans-serif;
-  color: #f8fafc;
-}
-
-.treemap-label-regiao {
-  color: #f8fafc;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.3;
-  letter-spacing: 0.2px;
-}
-
-.treemap-label-valor {
-  color: #cbd5e1;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-
-.treemap-label-percentual {
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.4;
-}
-
-/* Tooltip */
-
-.treemap-tooltip {
-  display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 6px;
-
-  min-width: 190px;
-  padding: 12px 14px;
-
-  background: #111827;
-  border: 1px solid #334155;
-  border-radius: 8px;
-
-  color: #f1f5f9;
-  font-size: 12px;
-
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  color: #f1f2eb;
+  font-family: "Segoe UI", sans-serif;
 }
-
-.treemap-tooltip strong {
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.treemap-tooltip span {
-  color: #cbd5e1;
-}
-
-.treemap-tooltip .treemap-tooltip-percentual {
-  color: #60a5fa;
-  font-weight: 600;
-}
+.treemap-label-regiao { color: #f4f3ed; font-size: 12px; font-weight: 750; line-height: 1.25; letter-spacing: .15px; }
+.treemap-label-valor { color: #d0dbd5; font-size: 10px; font-weight: 500; line-height: 1.3; }
+.treemap-label-percentual { font-size: 11px; font-weight: 800; line-height: 1.3; }
+.treemap-tooltip { display: flex; min-width: 180px; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid #405760; border-radius: 6px; background: #17282f; color: #dce6e0; font-size: 10px; box-shadow: 0 8px 22px #07111566; }
+.treemap-tooltip strong { color: #f1f2eb; font-size: 11px; }
+.treemap-tooltip span { color: #b5c2bf; }
+.treemap-tooltip .treemap-tooltip-percentual { color: #41c7b2; font-weight: 700; }

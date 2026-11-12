@@ -1,157 +1,216 @@
 import { useEffect, useMemo, useState } from "react";
 
 import Layout from "../componentes/layout/Layout";
+import FiltrosDashboard from "../componentes/layout/FiltrosDashboard";
 import GraficoEvolucaoFrota from "../componentes/graficos/GraficoEvolucaoFrota";
 import GraficoFrotaRegional from "../componentes/graficos/GraficoFrotaRegional";
 import GraficoTopMunicipios from "../componentes/graficos/GraficoTopMunicipios";
 import GraficoTopEstados from "../componentes/graficos/GraficoTopEstados";
 import GraficoTreemap from "../componentes/graficos/GraficoTreemap";
+import GraficoParticipacaoRegional from "../componentes/graficos/GraficoParticipacaoRegional";
+import GraficoRadarRegional from "../componentes/graficos/GraficoRadarRegional";
+import GraficoCorrelacao from "../componentes/graficos/GraficoCorrelacao";
 import { carregarDataset } from "../servicos/datasetService";
 
 import "./Dashboard.css";
 
+
+
+const CONFIG_PAGINAS = {
+  geral: {
+    titulo: "Visão geral",
+    descricao: "Um panorama dos principais números da frota brasileira.",
+    introducao: "Indicadores nacionais, evolução histórica e distribuição por região.",
+  },
+  regioes: {
+    titulo: "Análise por regiões",
+    descricao: "Compare a distribuição e a participação da frota nas cinco regiões.",
+    introducao: "A mesma informação pode ser lida por volume, proporção e indicadores relativos.",
+  },
+  municipios: {
+    titulo: "Análise por municípios",
+    descricao: "Explore os municípios com maior frota e compare população e veículos.",
+    introducao: "Combine período, região, estado e pesquisa para encontrar localidades.",
+  },
+  estados: {
+    titulo: "Análise por estados",
+    descricao: "Compare o volume da frota e sua relação com a população por UF.",
+    introducao: "O ranking mostra volume absoluto; a dispersão ajuda a observar relações entre variáveis.",
+  },
+};
+
+const NOMES_MESES = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+const NOMES_MESES_CURTOS = [
+  "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+  "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+];
+
+const formatadorNumero = new Intl.NumberFormat("pt-BR");
+
 function formatarNumero(valor) {
-  return new Intl.NumberFormat("pt-BR").format(valor || 0);
+  return formatadorNumero.format(Number(valor) || 0);
+}
+
+function formatarNomeLocal(nome = "") {
+  return String(nome)
+    .toLocaleLowerCase("pt-BR")
+    .replace(/(^|[\s'-])\p{L}/gu, (trecho) => trecho.toLocaleUpperCase("pt-BR"));
+}
+
+function obterReferenciaMaisRecente(dados) {
+  return dados.reduce((maisRecente, registro) => {
+    const ano = Number(registro.ano_referencia) || 0;
+    const mes = Number(registro.mes_referencia) || 0;
+    if (ano > maisRecente.ano || (ano === maisRecente.ano && mes > maisRecente.mes)) {
+      return { ano, mes };
+    }
+    return maisRecente;
+  }, { ano: 0, mes: 0 });
 }
 
 function prepararDadosEvolucao(dados) {
-  const anos = [
-    ...new Set(dados.map((registro) => Number(registro.ano_referencia))),
-  ].filter(Boolean);
+  const porAnoMes = new Map();
 
-  return anos
-    .sort((a, b) => a - b)
-    .map((ano) => {
-      const dadosDoAno = dados.filter(
-        (registro) => Number(registro.ano_referencia) === ano
-      );
+  dados.forEach((registro) => {
+    const ano = Number(registro.ano_referencia) || 0;
+    const mes = Number(registro.mes_referencia) || 0;
+    if (!ano || !mes) return;
 
-      const mesMaisRecente = dadosDoAno.reduce(
-        (maior, registro) =>
-          Math.max(maior, Number(registro.mes_referencia) || 0),
-        0
-      );
+    const chave = `${ano}-${mes}`;
+    porAnoMes.set(chave, (porAnoMes.get(chave) || 0) + (Number(registro.frota_circulante) || 0));
+  });
 
-      const dadosReferencia = dadosDoAno.filter(
-        (registro) => Number(registro.mes_referencia) === mesMaisRecente
-      );
-
-      const frotaCirculante = dadosReferencia.reduce(
-        (total, registro) =>
-          total + (Number(registro.frota_circulante) || 0),
-        0
-      );
-
+  return [...porAnoMes.entries()]
+    .map(([chave, frotaCirculante]) => {
+      const [ano, mes] = chave.split("-").map(Number);
       return {
         ano,
+        mes,
         frotaCirculante,
+        periodo: NOMES_MESES_CURTOS[mes - 1] || String(mes),
       };
-    });
+    })
+    .sort((a, b) => a.ano - b.ano || a.mes - b.mes);
 }
 
-function prepararDadosRegionais(dados, ano, mes) {
-  if (!ano || !mes) {
-    return [];
-  }
-
-  const dadosReferencia = dados.filter(
-    (registro) =>
-      Number(registro.ano_referencia) === ano &&
-      Number(registro.mes_referencia) === mes
-  );
-
-  const agrupamento = dadosReferencia.reduce((resultado, registro) => {
+function prepararDadosRegionais(dados) {
+  const agrupamento = dados.reduce((resultado, registro) => {
     const regiao = registro.regiao || "Não informada";
-
     if (!resultado[regiao]) {
-      resultado[regiao] = 0;
+      resultado[regiao] = { regiao, frotaCirculante: 0, frotaTotal: 0, populacao: 0 };
     }
 
-    resultado[regiao] += Number(registro.frota_circulante) || 0;
-
+    resultado[regiao].frotaCirculante += Number(registro.frota_circulante) || 0;
+    resultado[regiao].frotaTotal += Number(registro.frota_total) || 0;
+    resultado[regiao].populacao += Number(registro.qtde_habitantes) || 0;
     return resultado;
   }, {});
 
-  return Object.entries(agrupamento)
-    .map(([regiao, frotaCirculante]) => ({
-      regiao,
-      frotaCirculante,
+  return Object.values(agrupamento)
+    .map((item) => ({
+      ...item,
+      frotaPor100Habitantes: item.populacao > 0 ? (item.frotaCirculante / item.populacao) * 100 : 0,
+      frotaTotalPor100Habitantes: item.populacao > 0 ? (item.frotaTotal / item.populacao) * 100 : 0,
     }))
     .sort((a, b) => b.frotaCirculante - a.frotaCirculante);
 }
 
-function prepararTopMunicipios(dados, ano, mes, busca = "") {
-  if (!ano || !mes) {
-    return [];
-  }
+function agruparMunicipios(dados) {
+  const agrupamento = new Map();
 
-  const dadosReferencia = dados.filter(
-    (registro) =>
-      Number(registro.ano_referencia) === ano &&
-      Number(registro.mes_referencia) === mes
-  );
+  dados.forEach((registro) => {
+    const codigo = Number(registro.codigo_ibge);
+    if (!codigo || codigo <= 0) return;
 
+    const item = agrupamento.get(codigo) || {
+      codigo,
+      nome: registro.municipio || "Município não informado",
+      uf: registro.uf || "--",
+      regiao: registro.regiao || "Não informada",
+      populacao: 0,
+      frotaCirculante: 0,
+    };
+
+    item.populacao += Number(registro.qtde_habitantes) || 0;
+    item.frotaCirculante += Number(registro.frota_circulante) || 0;
+    agrupamento.set(codigo, item);
+  });
+
+  return [...agrupamento.values()];
+}
+
+function prepararTopMunicipios(dados, busca) {
   const termo = busca.trim().toLocaleLowerCase("pt-BR");
 
-  return dadosReferencia
-    .filter((registro) => Number(registro.codigo_ibge) > 0)
+  return agruparMunicipios(dados)
     .filter((registro) => {
       if (!termo) return true;
-      return `${registro.municipio || ""} ${registro.uf || ""}`
-        .toLocaleLowerCase("pt-BR")
-        .includes(termo);
+      return `${registro.nome} ${registro.uf}`.toLocaleLowerCase("pt-BR").includes(termo);
     })
-    .map((registro) => ({
-      municipio: registro.municipio,
-      uf: registro.uf,
-      frotaCirculante: Number(registro.frota_circulante) || 0,
-    }))
     .sort((a, b) => b.frotaCirculante - a.frotaCirculante)
     .slice(0, 10)
     .map((registro) => ({
       ...registro,
-      municipio: `${registro.municipio} - ${registro.uf}`,
+      municipio: `${formatarNomeLocal(registro.nome)} - ${registro.uf}`,
     }));
 }
 
-function prepararTopEstados(dados, ano, mes) {
-  if (!ano || !mes) {
-    return [];
-  }
+function prepararCorrelacaoMunicipios(dados, busca) {
+  const termo = busca.trim().toLocaleLowerCase("pt-BR");
 
-  const dadosReferencia = dados.filter(
-    (registro) =>
-      Number(registro.ano_referencia) === ano &&
-      Number(registro.mes_referencia) === mes
-  );
+  return agruparMunicipios(dados)
+    .filter((registro) => registro.populacao > 0)
+    .filter((registro) => {
+      if (!termo) return true;
+      return `${registro.nome} ${registro.uf}`.toLocaleLowerCase("pt-BR").includes(termo);
+    })
+    .sort((a, b) => b.frotaCirculante - a.frotaCirculante)
+    .slice(0, 50)
+    .map((registro) => ({
+      ...registro,
+      municipio: formatarNomeLocal(registro.nome),
+    }));
+}
 
-  const agrupamento = dadosReferencia.reduce((resultado, registro) => {
-    const uf = registro.uf || "Não informada";
-
+function prepararDadosEstados(dados) {
+  const agrupamento = dados.reduce((resultado, registro) => {
+    const uf = registro.uf || "--";
     if (!resultado[uf]) {
-      resultado[uf] = 0;
+      resultado[uf] = {
+        uf,
+        regiao: registro.regiao || "Não informada",
+        populacao: 0,
+        frotaCirculante: 0,
+      };
     }
 
-    resultado[uf] += Number(registro.frota_circulante) || 0;
-
+    resultado[uf].populacao += Number(registro.qtde_habitantes) || 0;
+    resultado[uf].frotaCirculante += Number(registro.frota_circulante) || 0;
     return resultado;
   }, {});
 
-  return Object.entries(agrupamento)
-    .map(([uf, frotaCirculante]) => ({
-      uf,
-      frotaCirculante,
-    }))
-    .sort((a, b) => b.frotaCirculante - a.frotaCirculante)
-    .slice(0, 10);
+  return Object.values(agrupamento).sort((a, b) => b.frotaCirculante - a.frotaCirculante);
 }
 
-const CONFIG_PAGINAS = {
-  geral: { titulo: "Visão geral", descricao: "Indicadores nacionais e panorama da frota brasileira." },
-  regioes: { titulo: "Análise por regiões", descricao: "Distribuição e participação da frota nas cinco regiões do Brasil." },
-  municipios: { titulo: "Análise por municípios", descricao: "Consulte e compare os municípios com maior frota circulante." },
-  estados: { titulo: "Análise por estados", descricao: "Ranking dos estados com maior frota circulante." },
-};
+function calcularIndicadores(dados) {
+  const somar = (campo) => dados.reduce(
+    (total, registro) => total + (Number(registro[campo]) || 0),
+    0
+  );
+  const municipios = new Set(
+    dados.map((registro) => Number(registro.codigo_ibge)).filter((codigo) => codigo > 0)
+  );
+
+  return {
+    frotaCirculante: somar("frota_circulante"),
+    frotaTotal: somar("frota_total"),
+    populacao: somar("qtde_habitantes"),
+    municipios: municipios.size,
+  };
+}
 
 function Dashboard() {
   const [paginaAtiva, setPaginaAtiva] = useState("geral");
@@ -159,174 +218,278 @@ function Dashboard() {
   const [dados, setDados] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [ano, setAno] = useState("");
+  const [mes, setMes] = useState("");
+  const [regiao, setRegiao] = useState("TODAS");
+  const [uf, setUf] = useState("TODAS");
 
   useEffect(() => {
     carregarDataset()
-      .then((resultado) => {
-        setDados(resultado);
-      })
-      .catch((erro) => {
-        console.error("Erro ao carregar indicadores:", erro);
+      .then((resultado) => setDados(resultado))
+      .catch((erroCarregamento) => {
+        console.error("Erro ao carregar indicadores:", erroCarregamento);
         setErro("Não foi possível carregar os dados do dataset.");
       })
-      .finally(() => {
-        setCarregando(false);
-      });
+      .finally(() => setCarregando(false));
   }, []);
 
-  const indicadores = useMemo(() => {
-    if (dados.length === 0) {
-      return {
-        ano: null,
-        mes: null,
-        frotaCirculante: 0,
-        frotaTotal: 0,
-        populacao: 0,
-        municipios: 0,
-      };
-    }
-
-    const anoMaisRecente = dados.reduce(
-      (maior, registro) =>
-        Math.max(maior, Number(registro.ano_referencia) || 0),
-      0
-    );
-
-    const dadosDoAno = dados.filter(
-      (registro) => Number(registro.ano_referencia) === anoMaisRecente
-    );
-
-    const mesMaisRecente = dadosDoAno.reduce(
-      (maior, registro) =>
-        Math.max(maior, Number(registro.mes_referencia) || 0),
-      0
-    );
-
-    const dadosReferencia = dadosDoAno.filter(
-      (registro) => Number(registro.mes_referencia) === mesMaisRecente
-    );
-
-    const somar = (campo) =>
-      dadosReferencia.reduce(
-        (total, registro) => total + (Number(registro[campo]) || 0),
-        0
-      );
-
-    const municipios = new Set(
-      dadosReferencia
-        .map((registro) => Number(registro.codigo_ibge))
-        .filter((codigo) => codigo > 0)
-    );
-
-    return {
-      ano: anoMaisRecente,
-      mes: mesMaisRecente,
-      frotaCirculante: somar("frota_circulante"),
-      frotaTotal: somar("frota_total"),
-      populacao: somar("qtde_habitantes"),
-      municipios: municipios.size,
-    };
-  }, [dados]);
-
-  const dadosEvolucao = useMemo(
-    () => prepararDadosEvolucao(dados),
+  const anosDisponiveis = useMemo(
+    () => [...new Set(dados.map((registro) => Number(registro.ano_referencia)).filter(Boolean))].sort((a, b) => b - a),
     [dados]
   );
 
-  const dadosRegionais = useMemo(
-    () =>
-      prepararDadosRegionais(dados, indicadores.ano, indicadores.mes),
-    [dados, indicadores.ano, indicadores.mes]
+  useEffect(() => {
+    if (dados.length && !ano) {
+      const referencia = obterReferenciaMaisRecente(dados);
+      setAno(String(referencia.ano));
+      setMes(String(referencia.mes));
+    }
+  }, [dados, ano]);
+
+  const mesesDisponiveis = useMemo(() => {
+    return [...new Set(
+      dados
+        .filter((registro) => Number(registro.ano_referencia) === Number(ano))
+        .map((registro) => Number(registro.mes_referencia))
+        .filter(Boolean)
+    )].sort((a, b) => a - b);
+  }, [dados, ano]);
+
+  // A competência selecionada é uma fotografia mensal. Os indicadores e rankings
+  // usam apenas esse mês; a série histórica usa todos os meses do ano selecionado,
+  // mantendo cada mês como um ponto separado (sem somar meses entre si).
+  const dadosAnoSelecionado = useMemo(
+    () => dados.filter((registro) => Number(registro.ano_referencia) === Number(ano)),
+    [dados, ano]
   );
 
+  const dadosReferencia = useMemo(
+    () => dadosAnoSelecionado.filter((registro) => Number(registro.mes_referencia) === Number(mes)),
+    [dadosAnoSelecionado, mes]
+  );
+
+  const referenciaSelecionada = useMemo(
+    () => ({ ano: Number(ano) || 0, mes: Number(mes) || 0 }),
+    [ano, mes]
+  );
+
+  const regioesDisponiveis = useMemo(
+    () => [...new Set(dadosReferencia.map((registro) => registro.regiao).filter(Boolean))].sort(),
+    [dadosReferencia]
+  );
+
+  const ufsDisponiveis = useMemo(
+    () => [...new Set(
+      dadosReferencia
+        .filter((registro) => regiao === "TODAS" || registro.regiao === regiao)
+        .map((registro) => registro.uf)
+        .filter(Boolean)
+    )].sort(),
+    [dadosReferencia, regiao]
+  );
+
+  const dadosFiltrados = useMemo(
+    () => dadosReferencia.filter((registro) =>
+      (regiao === "TODAS" || registro.regiao === regiao) &&
+      (uf === "TODAS" || registro.uf === uf)
+    ),
+    [dadosReferencia, regiao, uf]
+  );
+
+  const indicadores = useMemo(() => calcularIndicadores(dadosReferencia), [dadosReferencia]);
+  const dadosEvolucao = useMemo(
+    () => prepararDadosEvolucao(dadosAnoSelecionado),
+    [dadosAnoSelecionado]
+  );
+  const dadosRegionais = useMemo(() => prepararDadosRegionais(dadosReferencia), [dadosReferencia]);
   const dadosTopMunicipios = useMemo(
-    () =>
-      prepararTopMunicipios(dados, indicadores.ano, indicadores.mes, busca),
-    [dados, indicadores.ano, indicadores.mes, busca]
+    () => prepararTopMunicipios(dadosFiltrados, busca),
+    [dadosFiltrados, busca]
   );
-
-  const dadosTopEstados = useMemo(
-    () => prepararTopEstados(dados, indicadores.ano, indicadores.mes),
-    [dados, indicadores.ano, indicadores.mes]
+  const dadosCorrelacaoMunicipios = useMemo(
+    () => prepararCorrelacaoMunicipios(dadosFiltrados, busca),
+    [dadosFiltrados, busca]
   );
+  const dadosEstados = useMemo(() => prepararDadosEstados(dadosFiltrados), [dadosFiltrados]);
+  const dadosTopEstados = useMemo(() => dadosEstados.slice(0, 10), [dadosEstados]);
 
   const pagina = CONFIG_PAGINAS[paginaAtiva];
-  const mostrarIndicadores = paginaAtiva === "geral";
+  const periodo = referenciaSelecionada.ano && referenciaSelecionada.mes
+    ? `${String(referenciaSelecionada.mes).padStart(2, "0")}/${referenciaSelecionada.ano}`
+    : "Sem dados";
+
+  const descricaoEvolucao = `Evolução mensal de ${ano}; os indicadores usam a competência ${periodo}.`;
+
+  function alterarAno(novoAno) {
+    setAno(novoAno);
+
+    const mesesDoAno = dados
+      .filter((registro) => Number(registro.ano_referencia) === Number(novoAno))
+      .map((registro) => Number(registro.mes_referencia))
+      .filter(Boolean);
+
+    if (mesesDoAno.length) setMes(String(Math.max(...mesesDoAno)));
+  }
+
+  function limparFiltros() {
+    setRegiao("TODAS");
+    setUf("TODAS");
+    setBusca("");
+  }
+
+  function navegar(pagina) {
+    setPaginaAtiva(pagina);
+    setBusca("");
+    setRegiao("TODAS");
+    setUf("TODAS");
+  }
 
   return (
     <Layout
       paginaAtiva={paginaAtiva}
-      onNavegar={(pagina) => { setPaginaAtiva(pagina); setBusca(""); }}
+      onNavegar={navegar}
       titulo={pagina.titulo}
       descricao={pagina.descricao}
-      busca={busca}
-      onBuscaChange={setBusca}
-      mostrarBusca={paginaAtiva === "municipios"}
+      periodo={periodo}
     >
-      <section className="dashboard-welcome">
-        <span className="welcome-label">DADOS ABERTOS · BRASIL</span>
-        <h2>{paginaAtiva === "geral" ? <>Análise da frota <span>brasileira.</span></> : pagina.titulo}</h2>
-        <p>Explore os dados da frota nacional com visualizações interativas desenvolvidas em Recharts.</p>
+      <section className="dashboard-intro">
+        <div>
+          <span className="intro-index">EXPLORAÇÃO INTERATIVA</span>
+          <p>{pagina.introducao}</p>
+        </div>
+        <span className="intro-source">BASE HISTÓRICA · 2018—FEV/2023</span>
       </section>
 
-      {mostrarIndicadores && (
-        <section className="dashboard-indicadores">
-          <div className="indicadores-cabecalho">
-            <div><h3>Visão geral</h3><p>Principais indicadores da base nacional</p></div>
-            {indicadores.ano && <span className="indicadores-periodo">Referência: {String(indicadores.mes).padStart(2, "0")}/{indicadores.ano}</span>}
-          </div>
-          {carregando && <p className="indicadores-mensagem">Carregando indicadores...</p>}
-          {erro && <p className="indicadores-erro">{erro}</p>}
-          {!carregando && !erro && (
-            <div className="indicadores-grid">
-              <div className="indicador-card"><span className="indicador-titulo">Frota circulante</span><strong>{formatarNumero(indicadores.frotaCirculante)}</strong><span className="indicador-descricao">Veículos em circulação</span></div>
-              <div className="indicador-card"><span className="indicador-titulo">Frota total</span><strong>{formatarNumero(indicadores.frotaTotal)}</strong><span className="indicador-descricao">Total de veículos registrados</span></div>
-              <div className="indicador-card"><span className="indicador-titulo">População</span><strong>{formatarNumero(indicadores.populacao)}</strong><span className="indicador-descricao">Habitantes dos municípios</span></div>
-              <div className="indicador-card"><span className="indicador-titulo">Municípios</span><strong>{formatarNumero(indicadores.municipios)}</strong><span className="indicador-descricao">Municípios com código IBGE válido</span></div>
-            </div>
-          )}
-        </section>
+      {!carregando && !erro && (
+        <FiltrosDashboard
+          paginaAtiva={paginaAtiva}
+          ano={ano}
+          mes={mes}
+          regiao={regiao}
+          uf={uf}
+          busca={busca}
+          anos={anosDisponiveis}
+          meses={mesesDisponiveis}
+          regioes={regioesDisponiveis}
+          ufs={ufsDisponiveis}
+          periodoReferencia={periodo}
+          onAnoChange={alterarAno}
+          onMesChange={setMes}
+          onRegiaoChange={(novaRegiao) => { setRegiao(novaRegiao); setUf("TODAS"); }}
+          onUfChange={setUf}
+          onBuscaChange={setBusca}
+          onLimparFiltros={limparFiltros}
+        />
       )}
 
-      {carregando && <p className="dashboard-status">Carregando base de dados...</p>}
+      {carregando && <p className="dashboard-status"><span className="status-ponto" /> Lendo a base de dados...</p>}
       {erro && <p className="dashboard-status dashboard-status-erro">{erro}</p>}
 
       {!carregando && !erro && (
         <>
           {paginaAtiva === "geral" && (
-            <section className="dashboard-graficos-grid">
-              <GraficoEvolucaoFrota dados={dadosEvolucao} />
-              <GraficoFrotaRegional dados={dadosRegionais} />
-            </section>
+            <>
+              <section className="dashboard-indicadores">
+                <div className="indicadores-cabecalho">
+                  <div>
+                    <h3>Números em destaque</h3>
+                    <p>Indicadores consolidados na referência selecionada</p>
+                  </div>
+                  <span className="indicadores-periodo">{periodo}</span>
+                </div>
+                <div className="indicadores-grid">
+                  <article className="indicador-card indicador-ciano">
+                    <span className="indicador-sinal">01 / VOLUME</span>
+                    <span className="indicador-titulo">Frota circulante</span>
+                    <strong>{formatarNumero(indicadores.frotaCirculante)}</strong>
+                    <span className="indicador-descricao">Veículos em circulação</span>
+                  </article>
+                  <article className="indicador-card indicador-ambar">
+                    <span className="indicador-sinal">02 / REGISTROS</span>
+                    <span className="indicador-titulo">Frota total</span>
+                    <strong>{formatarNumero(indicadores.frotaTotal)}</strong>
+                    <span className="indicador-descricao">Total de veículos registrados</span>
+                  </article>
+                  <article className="indicador-card indicador-violeta">
+                    <span className="indicador-sinal">03 / CONTEXTO</span>
+                    <span className="indicador-titulo">População</span>
+                    <strong>{formatarNumero(indicadores.populacao)}</strong>
+                    <span className="indicador-descricao">Habitantes somados na base</span>
+                  </article>
+                  <article className="indicador-card indicador-coral">
+                    <span className="indicador-sinal">04 / COBERTURA</span>
+                    <span className="indicador-titulo">Municípios</span>
+                    <strong>{formatarNumero(indicadores.municipios)}</strong>
+                    <span className="indicador-descricao">Códigos IBGE válidos</span>
+                  </article>
+                </div>
+              </section>
+
+              <div className="secao-graficos-titulo">
+                <div><span>LEITURA DO CENÁRIO</span><h3>Como a frota se distribui no tempo e no território</h3></div>
+                <small>Referência dos indicadores: {periodo}</small>
+              </div>
+              <section className="dashboard-graficos-grid">
+                <GraficoEvolucaoFrota dados={dadosEvolucao} descricao={descricaoEvolucao} />
+                <GraficoFrotaRegional dados={dadosRegionais} />
+              </section>
+              <p className="dashboard-nota-metodologica">
+                A série apresenta os meses disponíveis de {ano}. Os indicadores e rankings usam somente a fotografia mensal de {periodo}; os valores de meses diferentes não são somados.
+              </p>
+            </>
           )}
+
           {paginaAtiva === "regioes" && (
-            <section className="dashboard-graficos-grid dashboard-graficos-duplo">
-              <GraficoFrotaRegional dados={dadosRegionais} />
-              <GraficoTreemap dados={dadosRegionais} />
-            </section>
+            <>
+              <div className="secao-graficos-titulo">
+                <div><span>COMPARAÇÃO TERRITORIAL</span><h3>Quatro leituras para comparar as regiões</h3></div>
+                <small>Referência: {periodo}</small>
+              </div>
+              <section className="dashboard-graficos-grid dashboard-graficos-regioes">
+                <GraficoFrotaRegional dados={dadosRegionais} />
+                <GraficoParticipacaoRegional dados={dadosRegionais} />
+                <GraficoTreemap dados={dadosRegionais} />
+                <GraficoRadarRegional dados={dadosRegionais} />
+              </section>
+            </>
           )}
+
           {paginaAtiva === "municipios" && (
-            <section className="dashboard-graficos-grid dashboard-graficos-simples">
+            <>
               <div className="dashboard-contexto-grafico">
-                <strong>{dadosTopMunicipios.length ? `Exibindo ${dadosTopMunicipios.length} resultado(s)` : "Nenhum município encontrado"}</strong>
-                <span>Referência: {String(indicadores.mes).padStart(2, "0")}/{indicadores.ano}. Pesquise pelo nome do município ou pela sigla da UF.</span>
+                <strong>{dadosTopMunicipios.length ? `${dadosTopMunicipios.length} municípios no ranking` : "Nenhum município encontrado"}</strong>
+                <span>Os dois gráficos respeitam os filtros e a pesquisa. A dispersão considera até 50 municípios da seleção.</span>
               </div>
-              <GraficoTopMunicipios dados={dadosTopMunicipios} />
-            </section>
+              <section className="dashboard-graficos-grid dashboard-graficos-comparacao">
+                <GraficoTopMunicipios dados={dadosTopMunicipios} />
+                <GraficoCorrelacao
+                  titulo="População x frota"
+                  descricao="Cada ponto representa um município entre os 50 maiores da seleção."
+                  dados={dadosCorrelacaoMunicipios}
+                  tipo="municipios"
+                />
+              </section>
+            </>
           )}
+
           {paginaAtiva === "estados" && (
-            <section className="dashboard-graficos-grid dashboard-graficos-simples">
+            <>
               <div className="dashboard-contexto-grafico">
-                <strong>Os 10 estados com maior frota circulante</strong>
-                <span>Valores agregados por UF no último mês disponível da base: {String(indicadores.mes).padStart(2, "0")}/{indicadores.ano}.</span>
+                <strong>{dadosEstados.length} unidades federativas na seleção</strong>
+                <span>O ranking destaca as 10 maiores frotas; a dispersão exibe todas as UFs disponíveis no recorte.</span>
               </div>
-              <GraficoTopEstados dados={dadosTopEstados} />
-            </section>
+              <section className="dashboard-graficos-grid dashboard-graficos-comparacao">
+                <GraficoTopEstados dados={dadosTopEstados} />
+                <GraficoCorrelacao
+                  titulo="População x frota por estado"
+                  descricao="Observe como o tamanho da população se relaciona ao volume da frota."
+                  dados={dadosEstados}
+                  tipo="estados"
+                />
+              </section>
+            </>
           )}
         </>
-      )}
-      {paginaAtiva === "geral" && !carregando && !erro && (
-        <p className="dashboard-nota-metodologica">Nota: a evolução considera o último mês disponível de cada ano. Em 2023, a base termina em fevereiro; portanto, esse ponto não representa dezembro.</p>
       )}
     </Layout>
   );
