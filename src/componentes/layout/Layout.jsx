@@ -1,20 +1,20 @@
-
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-
 import "./Layout.css";
 
-function Layout({ children }) {
+function Layout({ children, paginaAtiva, onNavegar, titulo, descricao, busca, onBuscaChange, mostrarBusca }) {
   return (
     <div className="app-layout">
-      <Sidebar />
-
+      <Sidebar paginaAtiva={paginaAtiva} onNavegar={onNavegar} />
       <main className="app-main">
-        <Header />
-
-        <div className="app-content">
-          {children}
-        </div>
+        <Header
+          titulo={titulo}
+          descricao={descricao}
+          busca={busca}
+          onBuscaChange={onBuscaChange}
+          mostrarBusca={mostrarBusca}
+        />
+        <div className="app-content">{children}</div>
       </main>
     </div>
   );

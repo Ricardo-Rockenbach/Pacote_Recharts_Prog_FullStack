@@ -23,7 +23,7 @@ function GraficoEvolucaoFrota({ dados }) {
       <div className="grafico-cabecalho">
         <div>
           <h3>Evolução da frota circulante</h3>
-          <p>Frota de veículos registrada por ano</p>
+          <p>Último mês disponível de cada ano · 2023: fevereiro</p>
         </div>
       </div>
 

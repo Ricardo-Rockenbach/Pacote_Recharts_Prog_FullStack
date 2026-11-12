@@ -76,3 +76,25 @@
   border-radius: 9px;
   font-size: 12px;
 }
+
+@media (max-width: 900px) {
+  .dashboard-header {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 22px 24px;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .header-search {
+    flex: 1;
+    min-width: 220px;
+  }
+
+  .header-search input {
+    width: 100%;
+  }
+}
